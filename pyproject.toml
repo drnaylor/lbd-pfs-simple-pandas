@@ -1,0 +1,12 @@
+[project]
+name = "lbd-pfs-simple-python-application"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "haversine>=2.9.0",
+    "numpy>=2.4.3",
+    "pandas>=3.0.1",
+    "pyarrow>=23.0.1",
+]
