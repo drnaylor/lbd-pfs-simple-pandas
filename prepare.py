@@ -68,7 +68,10 @@ def clean_prices(dataframe: pd.DataFrame, fuel_type: str) -> pd.Series:
             (fuel_series < 0.5, np.nan), # discard
             (fuel_series < 2.50, fuel_series * 100.0), # We have pounds, we want pence.
             (fuel_series < 50.0, fuel_series * 10.0), # Dimes is submitting something weird, so we correct that best we can
-            (fuel_series > 1000.0, fuel_series / np.ceil(np.log10(fuel_series) - 3)), # We expect a number that is three whole digits, so we take it down this way
+                # We expect a number that is three whole digits, so we take it down this way. We want to divide
+               # by 10 if we have four digits to get to 3 digits, noting log10(1000) is 3 so we would want 10 out of this,
+               # which is 10 ^ [log_10(1000) - 2] => 10 ^ (3 - 2) => 10 ^ 1 => 10
+            (fuel_series > 1000.0, fuel_series / np.pow(10, np.floor(np.log10(fuel_series) - 2))),
             (fuel_series > 500.0, fuel_series / 10.0)
         ]
     )
