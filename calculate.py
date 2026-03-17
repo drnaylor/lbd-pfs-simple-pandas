@@ -10,10 +10,31 @@ from typing import cast, NamedTuple
 import pandas as pd
 from haversine import haversine, Unit
 
+class Arguments(NamedTuple):
+    postcode: str
+    fuel_type: str
+    mpg: float
+    litres: float
 
-Arguments = NamedTuple("Arguments", [("postcode", str), ("fuel_type", str), ("mpg", float), ("litres", float)])
+
+class Dataframes(NamedTuple):
+    fuel: pd.DataFrame
+    postcode: pd.DataFrame
+
+
+class LatLong(NamedTuple):
+    latitude: float
+    longitude: float
+
 
 def parse_args() -> Arguments:
+    """
+    Uses argparse to parse the command line and does basic validation
+    checks on the inputs.
+
+    Returns:
+        An Arguments named tuple with the passed in, cleaned, arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("postcode", type=str)
     parser.add_argument("fuel_type", type=str)
@@ -34,14 +55,46 @@ def parse_args() -> Arguments:
 
     return Arguments(postcode_arg, fuel_type, args.mpg, args.litres)
 
-def read_files() -> tuple[pd.DataFrame, pd.DataFrame]:
-    # get the data files into memory
-    return (pd.read_parquet("fuel.parquet"), pd.read_parquet("postcode.parquet"))
+
+def read_files() -> Dataframes:
+    """
+    Reads the cleaned parquet files and returns a tuple of two data frames
+
+    Returns:
+        A Dataframes containing the dataframes
+    """
+    return Dataframes(fuel=pd.read_parquet("fuel.parquet"), postcode=pd.read_parquet("postcode.parquet"))
+
 
 def filter_fuel_types(fuel_prices: pd.DataFrame, fuel_type: str) -> pd.DataFrame:
+    """
+    Removes any entry from the fuel prices dataframes that
+    does not have a price for the given fuel type
+
+    Parameters:
+        fuel_prices: The fuel prices dataframe
+        fuel_type: The fuel type that is being investigated
+
+    Returns:
+        A dataframe
+    """
     return fuel_prices[fuel_prices[fuel_type].notna()]
 
-def get_lat_long(postcode_df: pd.DataFrame, postcode: str) -> tuple[float, float]:
+
+def get_lat_long(postcode_df: pd.DataFrame, postcode: str) -> LatLong:
+    """
+    Gets the latitude and logitude associated with a postcode
+
+    Parameters:
+        postcode_df: The dataframe containing postcodes, latitudes and longitudes
+        postcode: The postcode to get the lat/long for
+
+    Returns:
+        A LatLong with the latitude and longitude
+
+    Raises:
+        ValueError if the postcode does not exist in the postcode dataframe
+    """
     # We need to reset the index as it isn't "row number", it's intended to be a static identifier
     # However, we can't easily mix "at" and "iat" later (for getting single values out), so it's easier to just do this.
     postcode_row: pd.DataFrame = postcode_df[postcode_df["postcode"] == postcode][["latitude", "longitude"]].head(1).reset_index()
@@ -49,9 +102,10 @@ def get_lat_long(postcode_df: pd.DataFrame, postcode: str) -> tuple[float, float
         raise ValueError(f"Postcode {postcode} does not exist")
 
     # The following are floats.
-    return cast(tuple[float, float], (postcode_row.at[0, "latitude"], postcode_row.at[0, "longitude"]))
+    return LatLong(latitude=cast(float, postcode_row.at[0, "latitude"]), longitude=cast(float, postcode_row.at[0, "longitude"]))
 
-def distance_in_km(latlong: pd.Series, home_latlong: tuple[float, float]) -> float:
+
+def distance_in_km(latlong: pd.Series, home_latlong: LatLong) -> float:
     """
     A function to be passed to the pandas Series apply function.
 
@@ -64,7 +118,18 @@ def distance_in_km(latlong: pd.Series, home_latlong: tuple[float, float]) -> flo
     return haversine(latlong, home_latlong, unit=Unit.KILOMETERS)
 
 
-def add_distance_based_columns(fuel_prices: pd.DataFrame, args: Arguments, home_latlong: tuple[float, float]) -> pd.DataFrame:
+def add_distance_based_columns(fuel_prices: pd.DataFrame, args: Arguments, home_latlong: LatLong) -> pd.DataFrame:
+    """
+    Adds columns that enable the calculation of the cheapest fuel prices
+
+    Parameters:
+        fuel_prices: The fuel prices dataframe
+        args: The script's input arguments
+        home_latlong: The LatLong containing the latitude and longitude to measure distances from
+
+    Returns:
+        A dataframe with distance, total_fuel_cost, total_cost_of_driving and full_cost columns added
+    """
     fuel_prices["distance"] = fuel_prices[["latitude", "longitude"]].apply(distance_in_km, axis=1, home_latlong=home_latlong)
     fuel_prices["total_fuel_cost"] = fuel_prices[args.fuel_type] * float(args.litres)
     fuel_prices["total_cost_of_driving"] = 282.5 * fuel_prices["distance"] / float(args.mpg) # cost in pence
@@ -73,6 +138,13 @@ def add_distance_based_columns(fuel_prices: pd.DataFrame, args: Arguments, home_
 
 
 def display(fuel_prices: pd.DataFrame, fuel_type: str) -> None:
+    """
+    Creates a dataframe that displays the cheapest 10 forecourts by fuel_type and distance to travel
+
+    Parameters:
+        fuel_prices: A dataframe with fuel price and distance based data
+        fuel_type: A string representing the type of fuel
+    """
     display_frame = fuel_prices[["brand_name", "trading_name", "postcode", fuel_type, "distance", "total_fuel_cost", "total_cost_of_driving", "full_cost"]].sort_values(by="full_cost", ascending=True).rename(
         columns={
             "brand_name": "Brand Name",
