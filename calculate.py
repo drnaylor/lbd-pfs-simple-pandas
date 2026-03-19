@@ -5,7 +5,8 @@ Assumes that `postcode.parquet` and `fuel.parquet` exist.
 """
 
 import argparse
-from typing import cast, NamedTuple
+import re
+from typing import cast, NamedTuple, Optional
 
 import pandas as pd
 from haversine import haversine, Unit
@@ -27,7 +28,9 @@ class LatLong(NamedTuple):
     longitude: float
 
 
-def parse_args() -> Arguments:
+VALID_FUEL_TYPES = ["E5", "E10", "B7S", "B7P", "B10", "HVO"]
+
+def parse_args(to_parse: Optional[list[str]] = None) -> Arguments:
     """
     Uses argparse to parse the command line and does basic validation
     checks on the inputs.
@@ -41,19 +44,21 @@ def parse_args() -> Arguments:
     parser.add_argument("mpg", type=float)
     parser.add_argument("litres", type=float)
 
-    args: argparse.Namespace = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args(args = to_parse)
 
     fuel_type: str = args.fuel_type.strip().upper()
-    fuel_types = ["E5", "E10", "B7S", "B7P", "B10", "HVO"]
-    if fuel_type not in fuel_types:
-        raise ValueError(f"Fuel type must be one of {", ".join(fuel_types)}, but {fuel_type} was specified")
+    if fuel_type not in VALID_FUEL_TYPES:
+        raise ValueError(f"Fuel type must be one of {", ".join(VALID_FUEL_TYPES)}, but {args.fuel_type} was specified")
     
     # We check that the postcode is valid, but we also ensure that we put a space in if necessary
     postcode_arg: str = args.postcode.strip().upper()
     if " " not in postcode_arg:
         postcode_arg = " ".join([postcode_arg[:-3], postcode_arg[-3:]])
 
-    return Arguments(postcode_arg, fuel_type, args.mpg, args.litres)
+    if re.match(r"[A-Z]{1,2}\d{1,2} \d[A-Z]{2}", postcode_arg):
+        return Arguments(postcode_arg, fuel_type, args.mpg, args.litres)
+    else:
+        raise ValueError(f"Postcode {args.postcode} is not in a valid format")
 
 
 def read_files() -> Dataframes:

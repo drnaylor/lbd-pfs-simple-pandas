@@ -6,6 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+.hypothesis
+
 # macOS
 .DS_Store
 
