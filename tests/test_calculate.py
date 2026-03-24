@@ -5,7 +5,7 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 import pandas as pd
 import pytest
 
-from calculate import Arguments, parse_args, VALID_FUEL_TYPES, filter_fuel_types, LatLong, get_lat_long
+from calculate import Arguments, parse_args, VALID_FUEL_TYPES, filter_fuel_types, LatLong, get_lat_long, add_distance_based_columns
 
 E = TypeVar("E", bound=BaseException, default=BaseException)
 
@@ -122,10 +122,47 @@ def test_get_lat_long(postcode_sample, postcode, output):
     assert sut == output
 
 
-@given(st.text(alphabet=string.ascii_letters + string.digits, max_size=8))
+@given(postcode=st.text(alphabet=string.ascii_letters + string.digits, max_size=8))
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture]) # We don't need the fixture to change, so this is fine
 def test_get_lat_long_throws_when_postcode_does_not_exist(postcode_sample, postcode):
     with pytest.raises(ValueError) as exc:
         get_lat_long(postcode_sample, postcode)
 
     assert str(exc.value) == f"Postcode {postcode} does not exist"
+
+
+def test_add_distance_based_columns_returns_additional_columns():
+    input_df = pd.DataFrame.from_records(
+        [
+            {"latitude": 0.0, "longitude": 0.0, "E5": 0.0, "E10": 129.9},
+            {"latitude": 1.0, "longitude": 0.0, "E5": 0.0, "E10": 130.9},
+            {"latitude": 1.0, "longitude": 1.0, "E5": 0.0, "E10": 131.9},
+            {"latitude": -1.0, "longitude": 1.0, "E5": 0.0, "E10": 132.9}
+        ]
+    )
+
+    expected_df = pd.DataFrame.from_records(
+        [
+            {"latitude": 0.0, "longitude": 0.0, "E5": 0.0, "E10": 129.9, "distance": 0.0, "total_fuel_cost": 1299.0, "total_cost_of_driving": 0.0, "full_cost": 1299.0},
+            {"latitude": 1.0, "longitude": 0.0, "E5": 0.0, "E10": 130.9, "distance": 111.2, "total_fuel_cost": 1309.0, "total_cost_of_driving": 914.0, "full_cost": 2223.0},
+            {"latitude": 1.0, "longitude": 1.0, "E5": 0.0, "E10": 131.9, "distance": 157.25, "total_fuel_cost": 1319.0, "total_cost_of_driving": 1302.0, "full_cost": 2621.0},
+            {"latitude": -1.0, "longitude": 1.0, "E5": 0.0, "E10": 132.9, "distance": 157.25, "total_fuel_cost": 1329.0, "total_cost_of_driving": 1312.0, "full_cost": 2641.0}
+        ]
+    )
+
+    args = Arguments(
+        postcode="a",
+        fuel_type="E10",
+        mpg=45, # 1 km/l
+        litres=10
+    )
+    result_df = add_distance_based_columns(input_df, args, LatLong(0.0, 0.0))
+    # to accounr for floating point number arithmetic, we round the result df columns
+    result_df["distance"] = result_df["distance"].round(2)
+    result_df["total_fuel_cost"] = result_df["total_fuel_cost"].round(0)
+    result_df["total_cost_of_driving"] = result_df["total_cost_of_driving"].round(0)
+    result_df["full_cost"] = result_df["full_cost"].round(0)
+
+    assert expected_df.equals(result_df)
+
+    

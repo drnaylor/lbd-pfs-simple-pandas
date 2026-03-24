@@ -137,7 +137,8 @@ def add_distance_based_columns(fuel_prices: pd.DataFrame, args: Arguments, home_
     """
     fuel_prices["distance"] = fuel_prices[["latitude", "longitude"]].apply(distance_in_km, axis=1, home_latlong=home_latlong)
     fuel_prices["total_fuel_cost"] = fuel_prices[args.fuel_type] * float(args.litres)
-    fuel_prices["total_cost_of_driving"] = 282.5 * fuel_prices["distance"] / float(args.mpg) # cost in pence
+    # (1 / mpg) * 2.825 * l * dist
+    fuel_prices["total_cost_of_driving"] = 2.825 * fuel_prices["distance"] * fuel_prices[args.fuel_type] / float(args.mpg) 
     fuel_prices["full_cost"] = fuel_prices["total_fuel_cost"] + fuel_prices["total_cost_of_driving"]
     return fuel_prices
 
