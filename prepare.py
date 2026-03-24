@@ -65,7 +65,7 @@ def clean_prices(dataframe: pd.DataFrame, fuel_type: str) -> pd.Series:
             .apply(parse_datetime)
             # This treats the Not a Time values as False, which we want here
             # as we have timezone aware data, we need to make sure we are timezone aware here.
-            .between(datetime.now(tz=timezone.utc) - timedelta(weeks = 2), datetime.now(tz=timezone.utc)) 
+            .between(datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(weeks = 2), datetime.now(tz=timezone.utc)) 
     )
 
     fuel_series = dataframe[f"forecourts.fuel_price.{fuel_type}"]

@@ -55,7 +55,7 @@ def parse_args(to_parse: Optional[list[str]] = None) -> Arguments:
     if " " not in postcode_arg:
         postcode_arg = " ".join([postcode_arg[:-3], postcode_arg[-3:]])
 
-    if re.match(r"[A-Z]{1,2}\d{1,2} \d[A-Z]{2}", postcode_arg):
+    if re.match(r"^[A-Z]{1,2}\d{1,2} \d[A-Z]{2}$", postcode_arg):
         return Arguments(postcode_arg, fuel_type, args.mpg, args.litres)
     else:
         raise ValueError(f"Postcode {args.postcode} is not in a valid format")
