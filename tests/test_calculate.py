@@ -7,25 +7,9 @@ import pytest
 
 from calculate import Arguments, parse_args, VALID_FUEL_TYPES, filter_fuel_types, LatLong, get_lat_long, add_distance_based_columns
 
+from .utils import Postcode, postcode
+
 E = TypeVar("E", bound=BaseException, default=BaseException)
-
-class Postcode(NamedTuple):
-    input: str
-    output: str
-
-@st.composite
-def postcode(draw):
-    geographic = draw(st.text(alphabet=string.ascii_letters, min_size=1, max_size=2))
-    outward = draw(st.text(alphabet=string.digits, min_size=1, max_size=2))
-    inward_n = draw(st.text(alphabet=string.digits, min_size=1, max_size=1))
-    inward_suffix = draw(st.text(alphabet=string.ascii_letters, min_size=2, max_size=2))
-    space = draw(st.one_of(st.just(" "), st.just("")))
-
-    return Postcode(
-        input=f"{geographic}{outward}{space}{inward_n}{inward_suffix}",
-        output=f"{geographic}{outward} {inward_n}{inward_suffix}".upper(),
-    )
-
 
 @given(
         postcode(),

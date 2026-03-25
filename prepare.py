@@ -101,7 +101,7 @@ def clean_fuel_postcodes(fuel_dataframe: pd.DataFrame) -> pd.DataFrame:
     # for this, I've used data from https://www.freemaptools.com/download-uk-postcode-lat-lng.htm
     # but before that, the postcodes in the petrol CSV files aren't all that good either, so we do a quick patch up
 
-    pfs_postcode_series = fuel_dataframe["forecourts.location.postcode"].str.strip() 
+    pfs_postcode_series = fuel_dataframe["forecourts.location.postcode"].str.strip().str.upper()
     fuel_dataframe["postcode"] = pfs_postcode_series.case_when(
         [
             # if no space is present, add a space. Otherwise, leave it as is
