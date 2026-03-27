@@ -1,9 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
-import numpy as np
 import pandas as pd
-import pytest
 from hypothesis import given, strategies as st
 
 from prepare import remove_qa_entries, parse_datetime, clean_prices, clean_fuel_postcodes

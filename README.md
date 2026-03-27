@@ -25,7 +25,9 @@ You'll need to get two pieces of data:
 
 Place them in this directory. You may want to rename them for simplicity.
 
-Once you've done that, there are two scripts to run, the one-time `prepare` script:
+Once you've done that, there are two scripts to run, the one-time `prepare` script and the `calculate` script.
+
+Perhaps unsurprisingly, we start with the `prepare` script. which is run as follows:
 
 ```bash
 uv run ./prepare.py <fuel finder csv filename> <postcode_csv_filename>
